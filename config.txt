@@ -1,0 +1,2 @@
+bwa	enter-path-here
+samtools	enter-path-here
