@@ -1,0 +1,2 @@
+test/SF370.fas.gz	test/Broglia_2018_SRR7269392_1.subset.fq.gz	test/Broglia_2018_SRR7269392_2.subset.fq.gz
+test/5448.fas.gz	test/Freiberg_2016_SRR3440049_1.subset.fq.gz

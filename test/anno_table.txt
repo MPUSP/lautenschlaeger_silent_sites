@@ -1,0 +1,6 @@
+test/5448.fas.gz	test/5448.gff
+test/SF370.fas.gz	test/SF370.gff
+test/5448.fas.gz	prophage	1000739:1046659
+test/5448.fas.gz	prophage	1162580:1195997
+test/SF370.fas.gz	prophage	529586:570503
+test/SF370.fas.gz	prophage	778519:821003

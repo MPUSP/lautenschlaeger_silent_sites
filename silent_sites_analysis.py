@@ -10,6 +10,7 @@ import gzip
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
 from multiprocessing import Process, Queue
+import shutil
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
@@ -22,6 +23,8 @@ parser.add_argument('-r', '--region_size', dest="region_size", type=int, help="M
 parser.add_argument('-p', '--promoter_region', dest="promoter_region", type=int, help="Promoter region [250]", default=250)
 parser.add_argument('--anno', dest="anno", help="Annotation files and info [None]", default='')
 parser.add_argument('--coverage_threshold', dest="coverage_threshold", type=float, help="Normalized coverage threshold [0.02]", default=0.02)
+parser.add_argument('--verbose', dest='verbose', action='store_true', help="Verbose mode [False]", default=False)
+parser.add_argument('-k', 'keep', dest='keep', action='store_true', help="Keep temporary files [False]", default=False)
 
 args = parser.parse_args()
 
@@ -129,19 +132,24 @@ def parse_config(config):
         with open(config, 'r') as infile:
             for line in infile:
                 if not line.startswith('#'):
-                    line = line.strip().split('=')
+                    line = line.strip().split('\t')
                     if line[0].lower()=='bwa':
                         if not os.path.exists(line[1]):
                             print(F'BWA executable {line[1]} not found. Aborting.')
                             sys.exit(1)
                         else:
                             defaults.mapping.bwa = line[1]
+                            if args.verbose: print(F"Using BWA executable {line[1]}", flush=True)
                     elif line[0].lower()=='samtools':
                         if not os.path.exists(line[1]):
                             print(F'Samtools executable {line[1]} not found. Aborting.')
                             sys.exit(1)
                         else:
                             defaults.mapping.samtools = line[1]
+                            if args.verbose: print(F"Using Samtools executable {line[1]}", flush=True)
+                    else:
+                        print(F"Unknown parameter {line[0]} in config file. Aborting.")
+                        sys.exit(1)
     #check program parameters
     if args.cores<1: defaults.cores = 1
     else: defaults.cores = args.cores
@@ -197,28 +205,33 @@ def parse_config(config):
     return input_dataset, anno
     
 def copying_ref_files(input_dataset):
-    for ref in input_dataset:
+    for ref in list(input_dataset.keys()):
         if not os.path.exists(defaults.temp_folder+'reference/'+ref.split('/')[-1]+'.fas.gz'):
             command = F'cp {ref} {defaults.temp_folder}reference/'
             res = subc(command)
             if not res: sys.exit(1)
+        
         if not ref.endswith('.gz'):
             command = F"gzip {defaults.temp_folder}reference/{ref.split('/')[-1]}"
             res = subc(command)
             if not res: sys.exit(1)
             input_dataset[defaults.temp_folder+'reference/'+ref.split('/')[-1]+'.gz'] = input_dataset.pop(ref)
+            ref = defaults.temp_folder+'reference/'+ref.split('/')[-1]+'.gz'
         else:
             input_dataset[defaults.temp_folder+'reference/'+ref.split('/')[-1]] = input_dataset.pop(ref)
+            ref = defaults.temp_folder+'reference/'+ref.split('/')[-1]
         
         strain = ref.split('/')[-1].rsplit('.',2)[0]
+        
         defaults.strains.add((strain, ref))
     
     return input_dataset
 
-def preparing_references(input_dataset):
+def prepare_references(input_dataset):
     for key in input_dataset:
         if not os.path.exists(F"{key}.amb"):
             command = f'{defaults.mapping.bwa} index {key}'
+            if args.verbose: print(command, flush=True)
             res = subc(command)
             if not res: sys.exit(1)
     return True
@@ -258,12 +271,21 @@ def extract_coverage_to_file():
                 ID = bamfile.rsplit('.',2)[0]
                 if not os.path.exists(F"{mapping_folder}{ID}.cov.gz"):
                     print(F"Extracting coverage for {ID} ...", flush=True)
-                    norm_data = extract_coverage(F"{mapping_folder}{ID}.dedup.bam")
+                    xtr = extract_coverage(F"{mapping_folder}{ID}.dedup.bam")
                     with gzip.open(F"{mapping_folder}{ID}.cov.gz", 'wt') as outfile:
-                        for i in norm_data:
+                        for i in xtr:
                             outfile.write(F"{i}\n")
                 cov_files[strain].append(F"{mapping_folder}{ID}.cov.gz")
     return cov_files
+
+def extract_coverage(datei):#apply_UQ_normalization(datei):
+    bamfile = pysam.AlignmentFile(datei, 'rb')
+    ref_length = bamfile.lengths[0]
+    dataset = [0 for i in range(ref_length)]
+    for pileupcolumn in bamfile.pileup():
+        dataset[pileupcolumn.reference_pos-1] = pileupcolumn.n
+    bamfile.close()
+    return dataset
 
 def norm_coverage(coverage, type='max'):
     """
@@ -280,6 +302,7 @@ def norm_coverage(coverage, type='max'):
         return [c/mean_cov for c in coverage]
     elif type=='trimUQ':
         trim = np.median(sorted(coverage)[-len(coverage)//4:])
+        if trim==0: trim = 1.0
         return [c/trim if c<=trim else 1.0 for c in coverage]
     else:
         print("Unknown normalization type!")
@@ -307,7 +330,7 @@ def read_fasta(fasta):
     with gzip.open(fasta, 'rt') as infile:
         seq=''
         title=''
-        for line in f:
+        for line in infile:
             if line[0]=='>' and title=='':
                 title=line[1:].strip()
             elif line[0]=='>' and title!='':
@@ -471,7 +494,7 @@ def main():
     coverage_files = extract_coverage_to_file()
     
     #read reference fasta
-    references = {strain:[read_fasta(ref), anno[ref]['anno']] ref for strain, ref in defaults.strains}
+    references = {strain:[read_fasta(ref), anno[ref]['anno']] for strain, ref in defaults.strains}
     
     #process each strain
     for ref in input_dataset:
@@ -485,6 +508,10 @@ def main():
         #write output
         write_output(strain, not_expressed_genes, not_expressed_intergenic, true_zero_regions, expressed_intergenic, consensus_cov)
     
-    print('Done.')
+    if not args.keep:
+        print(F"Removing temporary files ...", flush=True)
+        shutil.rmtree(defaults.temp_folder)
+    
+    print('Done. Have a nice day!')
 
 main()

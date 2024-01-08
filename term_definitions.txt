@@ -1,0 +1,4 @@
+not_expressed_genes: regions annotated as genes incl. promoter region upstream, but not expressed above threshold and not within annotated prophage region
+not_expressed_intergenic: regions not annotated as genes, but not expressed above threshold and not within annotated prophage region
+true_zero_regions: regions with 0 coverage independent of annotation except outside of prophage region
+expressed_intergenic: regions not annotated as genes, but expressed above threshold and not within annotated prophage region

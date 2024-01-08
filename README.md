@@ -20,7 +20,7 @@ This software is not intended to be used for critical, medical, or life-saving p
 
 By using this software, you acknowledge and agree to this disclaimer. If you do not agree to these terms, you should refrain from using the software.
 
-Last updated: 2023-12-14
+Last updated: 2024-01-08
 
 ## Installation
 ### Pre-requisites (versions are suggestions and others may work)
@@ -81,6 +81,7 @@ Two files are required:
 | -p | assumed promoter region [250] |
 | --anno | annotation file table [] (see above) |
 | --coverage_threshold | normalized coverage threshold [0.02] |
+| --verbose | verbose mode (more talkative) |
 
 
 ### Execution:
@@ -89,8 +90,9 @@ Two files are required:
 ``````
 
 ### Example:
+We are assuming, that all input files are available at those relative paths.
 ``````
-./venv/bin/python3 ./silent_sites_analysis.py 
+venv/bin/python3 ./silent_sites_analysis.py  -c ../config.txt -n 10 -i test/input_table.txt --anno test/anno_table --verbose
 ``````
 
 
@@ -99,7 +101,7 @@ This software has been created by Knut Finstermeier, Max Planck Unit for the Sci
 
 ## Release:
 
-Version 1.0, 2023-12-14
+Version 1.0, 2024-01-08
 
 ## Acknowledgments
 This software was written in the context of the referenced publication by Nina Lautenschläger et al. (2024). The authors would like to thank the Max Planck Unit for the Science of Pathogens for support. 
