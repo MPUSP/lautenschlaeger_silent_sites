@@ -29,7 +29,6 @@ Last updated: 2024-01-08
 - samtools >= 1.15 (https://github.com/samtools/samtools)
 - The following additional Python libraries are required and can be installed through PIP (see below):
   - Pysam >= 0.22.0
-  - Biopython >= 1.52
   - Numpy
   - Matplotlib
 
@@ -64,7 +63,8 @@ Two files are required:
 
 
 ### Config file
-  - tab-separated text file with 2 columns and currently 2 rows to import program paths into the analysis tool
+The tool will try to find executables for bwa and samtools in your path variables. If this is not the case, you can provide a config file with the paths to the executables. With the config file, you will also be able to specify the version of the programs to use.
+The config file is a tab-separated text file with 2 columns and currently 2 rows to import program paths into the analysis tool.
   - bwa &nbsp;&nbsp;&nbsp;&nbsp; absolute-path-to-bwa-mem2-executable
   - samtools &nbsp;&nbsp;&nbsp;&nbsp; absolute-path-to-samtools-executable
 
@@ -92,7 +92,7 @@ Two files are required:
 ### Example:
 We are assuming, that all input files are available at those relative paths.
 ``````
-venv/bin/python3 ./silent_sites_analysis.py  -c ../config.txt -n 10 -i test/input_table.txt --anno test/anno_table --verbose
+venv/bin/python3 ./silent_sites_analysis.py  -n 10 -i test/input_table.txt --anno test/anno_table.txt --verbose
 ``````
 
 

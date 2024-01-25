@@ -7,8 +7,6 @@ import pysam
 import subprocess
 import datetime
 import gzip
-from Bio import pairwise2
-from Bio.pairwise2 import format_alignment
 from multiprocessing import Process, Queue
 import shutil
 
@@ -17,14 +15,14 @@ parser = ArgumentParser()
 parser.add_argument("-c", "--config", dest="config", help="Config file [None]", default=None)
 parser.add_argument("-n", "--cores", dest="cores", type=int, help="Number of cores to use [1]", default=1)
 parser.add_argument("-i", '--input', dest="input", help="Input table [None]", default=None)
-parser.add_argument('-t', '-temp', dest="temp", help="Temporary folder [./temp]", default='./temp')
+parser.add_argument('-t', '--temp', dest="temp", help="Temporary folder [./temp]", default='./temp')
 parser.add_argument('-o', '--output', dest="output", help="Output folder [./output]", default='./output')
 parser.add_argument('-r', '--region_size', dest="region_size", type=int, help="Minimum region size [100]", default=100)
 parser.add_argument('-p', '--promoter_region', dest="promoter_region", type=int, help="Promoter region [250]", default=250)
 parser.add_argument('--anno', dest="anno", help="Annotation files and info [None]", default='')
 parser.add_argument('--coverage_threshold', dest="coverage_threshold", type=float, help="Normalized coverage threshold [0.02]", default=0.02)
 parser.add_argument('--verbose', dest='verbose', action='store_true', help="Verbose mode [False]", default=False)
-parser.add_argument('-k', 'keep', dest='keep', action='store_true', help="Keep temporary files [False]", default=False)
+parser.add_argument('-k', '--keep', dest='keep', action='store_true', help="Keep temporary files [False]", default=False)
 
 args = parser.parse_args()
 
@@ -121,10 +119,32 @@ def parse_anno(anno_file):
     return dataset
 
 def parse_config(config):
+    
+    def find_executable(name):
+        try:
+            subprocess.run(['whereis', name], stdout=subprocess.PIPE, text=True)
+            paths = result.stdout.strip().split()
+            if len(paths) > 1:
+                return paths[1]  # The first element is the command itself, the second is the path
+            else:
+                return None
+        except subprocess.SubprocessError as e:
+            print(f"An error occurred: {e}")
+            return None
+    
     print(F"Parsing config file and validating arguments ...", flush=True)
+    config_required=0
     if config=='':
-        print('No config file specified. Aborting.')
-        sys.exit(1)
+        for prog in ['bwa', 'samtools']:
+            res = find_executable(prog)
+            if res:
+                config_required+=1
+                if prog=='bwa': defaults.mapping.bwa = res
+                elif prog=='samtools': defaults.mapping.samtools = res
+                print(F"Required program {prog} found at {res}.", flush=True)
+        if config_required<2:
+            print('No config file specified and programs missing. Aborting. Please read the README.')
+            sys.exit(1)
     elif not os.path.exists(config):
         print(F'Config file {config} not found. Aborting.')
         sys.exit(1)
